@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D 5e Character Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* --- Стилизация --- */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .sheet {
+            width: 800px;
+            background: #ffffff;
+            border: 2px solid #333;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        
+        header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding: 10px;
+        }
+
+        header h1 {
+            margin: 0;
+            color: #8b0000; /* Темно-красный */
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .stats-block, .skills-block, .combat-block, .info-block {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .stats-block h2, .skills-block h2, .combat-block h2, .portrait-section h2 {
+            text-align: center;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        .stat-name { font-weight: bold; font-size: 0.9em; text-transform: uppercase; }
+        .stat-value { font-size: 1.8em; font-weight: bold; line-height: 1; }
+        .stat-mod { font-size: 1.2em; border: 1px solid #aaa; padding: 5px 8px; border-radius: 20px; background: #eee; min-width: 30px; }
+        
+        .skill { font-size: 0.9em; }
+        .skill span { font-weight: bold; padding: 2px 5px; background: #eee; border-radius: 5px; margin-right: 5px; }
+        
+        .info-block {
+            grid-column: 1 / -1; /* Растянуть на всю ширину */
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .info-item { border: 1px solid #ddd; padding: 5px; border-radius: 4px; }
+        .info-item label { font-size: 0.8em; color: #555; display: block; }
+        .info-item span { font-size: 1.1em; font-weight: bold; }
+        
+        .combat-item { text-align: center; margin-bottom: 10px; }
+        .combat-item label { font-size: 0.9em; color: #555; text-transform: uppercase; display: block; }
+        .combat-item span { font-size: 2em; font-weight: bold; color: #333; }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ПОРТРЕТА --- */
+        .portrait-section {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f9f9f9;
+            margin-bottom: 15px;
+        }
+        .portrait-container {
+            width: 100%;
+            height: 200px;
+            border: 2px dashed #ccc;
+            background: #eee;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.9em;
+            overflow: hidden; /* Обрезаем лишнее от картинки */
+        }
+        #portrait-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Картинка заполнит блок, сохранив пропорции */
+        }
+        
+        /* Стилизация кнопки загрузки */
+        input[type="file"] {
+            display: none; /* Прячем стандартную кнопку */
+        }
+        .upload-label {
+            display: block;
+            text-align: center;
+            padding: 8px;
+            background: #ddd;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .upload-label:hover {
+            background: #ccc;
+        }
+        /* --- --- */
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            width: 800px; /* Та же ширина, что и у листа */
+            margin-top: 15px;
+        }
+
+        #generate-button, #export-button {
+            flex: 1; /* Кнопки поделят пространство */
+            padding: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #fff;
+            background-color: #8b0000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #generate-button:hover, #export-button:hover {
+            background-color: #a52a2a;
+        }
+        
+        /* Cтиль для кнопки экспорта */
+        #export-button {
+            background-color: #4a69bd; /* Синий */
+        }
+        #export-button:hover {
+            background-color: #5c7fe6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sheet" id="sheet-container">
+        <header>
+            <h1 id="char-name">Имя Персонажа</h1>
+        </header>
+
+        <div class="info-block">
+            <div class="info-item">
+                <label>Класс и Уровень</label>
+                <span id="char-class-level"></span>
+            </div>
+            <div class="info-item">
+                <label>Раса</label>
+                <span id="char-race"></span>
+            </div>
+            <div class="info-item">
+                <label>Предыстория</label>
+                <span id="char-background"></span>
+            </div>
+            <div class="info-item">
+                <label>Мировоззрение</label>
+                <span id="char-alignment"></span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="stats-block">
+                <h2>Характеристики</h2>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Сила</div>
+                        <div class="stat-value" id="stat-str">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-str">+0</div>
+                </div>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Ловкость</div>
+                        <div class="stat-value" id="stat-dex">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-dex">+0</div>
+                </div>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Телосложение</div>
+                        <div class="stat-value" id="stat-con">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-con">+0</div>
+                </div>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Интеллект</div>
+                        <div class="stat-value" id="stat-int">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-int">+0</div>
+                </div>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Мудрость</div>
+                        <div class="stat-value" id="stat-wis">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-wis">+0</div>
+                </div>
+                <div class="stat">
+                    <div>
+                        <div class="stat-name">Харизма</div>
+                        <div class="stat-value" id="stat-cha">10</div>
+                    </div>
+                    <div class="stat-mod" id="mod-cha">+0</div>
+                </div>
+            </div>
+
+            <div class="middle-column">
+                <div class="portrait-section">
+                    <h2>Портрет</h2>
+                    <div class="portrait-container">
+                        <img id="portrait-img" src="" alt="Портрет персонажа">
+                    </div>
+                    <input type="file" id="portrait-upload" accept="image/png, image/jpeg">
+                    <label for="portrait-upload" class="upload-label">Загрузить портрет</label>
+                </div>
+                
+                <div class="combat-block">
+                    <h2>Боевые</h2>
+                    <div class="combat-item">
+                        <label>Класс Доспеха</label>
+                        <span id="combat-ac">10</span>
+                    </div>
+                    <div class="combat-item">
+                        <label>Инициатива</label>
+                        <span id="combat-initiative">+0</span>
+                    </div>
+                    <div class="combat-item">
+                        <label>Скорость</label>
+                        <span id="combat-speed">30 ft.</span>
+                    </div>
+                    <div class="combat-item">
+                        <label>Хиты (HP)</label>
+                        <span id="combat-hp">10</span>
+                    </div>
+                     <div class="combat-item">
+                        <label>Пассивная Мудрость</label>
+                        <span id="passive-wisdom">10</span>
+                    </div>
+                </div>
+            </div>
+            <div class="skills-block">
+                <h2>Навыки</h2>
+                <div class="skill"><span id="skill-acrobatics">+0</span>Акробатика (Лов)</div>
+                <div class="skill"><span id="skill-animal_handling">+0</span>Уход за животными (Муд)</div>
+                <div class="skill"><span id="skill-arcana">+0</span>Магия (Инт)</div>
+                <div class="skill"><span id="skill-athletics">+0</span>Атлетика (Сил)</div>
+                <div class="skill"><span id="skill-deception">+0</span>Обман (Хар)</div>
+                <div class="skill"><span id="skill-history">+0</span>История (Инт)</div>
+                <div class="skill"><span id="skill-insight">+0</span>Проницательность (Муд)</div>
+                <div class="skill"><span id="skill-intimidation">+0</span>Запугивание (Хар)</div>
+                <div class="skill"><span id="skill-investigation">+0</span>Расследование (Инт)</div>
+                <div class="skill"><span id="skill-medicine">+0</span>Медицина (Муд)</div>
+                <div class="skill"><span id="skill-nature">+0</span>Природа (Инт)</div>
+                <div class="skill"><span id="skill-perception">+0</span>Восприятие (Муд)</div>
+                <div class="skill"><span id="skill-performance">+0</span>Выступление (Хар)</div>
+                <div class="skill"><span id="skill-persuasion">+0</span>Убеждение (Хар)</div>
+                <div class="skill"><span id="skill-religion">+0</span>Религия (Инт)</div>
+                <div class="skill"><span id="skill-sleight_of_hand">+0</span>Ловкость рук (Лов)</div>
+                <div class="skill"><span id="skill-stealth">+0</span>Скрытность (Лов)</div>
+                <div class="skill"><span id="skill-survival">+0</span>Выживание (Муд)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button id="generate-button">Сгенерировать нового персонажа</button>
+        <button id="export-button">Экспорт в PNG</button>
+    </div>
+
+    <script>
+        /* --- Логика генератора --- */
+        
+        // --- Базы данных (очень упрощенные) ---
+        const RACES = ['Человек', 'Эльф', 'Дворф', 'Полурослик', 'Драконорожденный', 'Гном', 'Полуэльф', 'Полуорк', 'Тифлинг'];
+        const CLASSES = ['Воин', 'Вор', 'Волшебник', 'Жрец', 'Варвар', 'Бард', 'Друид', 'Монах', 'Паладин', 'Следопыт', 'Чародей', 'Колдун'];
+        const BACKGROUNDS = ['Прислужник', 'Шарлатан', 'Преступник', 'Артист', 'Народный герой', 'Гильдейский ремесленник', 'Отшельник', 'Мудрец', 'Моряк', 'Солдат'];
+        const ALIGNMENTS = ['Законно-добрый', 'Нейтрально-добрый', 'Хаотично-добрый', 'Законно-нейтральный', 'Истинно-нейтральный', 'Хаотично-нейтральный', 'Законно-злой', 'Нейтрально-злой', 'Хаотично-злой'];
+        const NAMES = ['Аларик', 'Брин', 'Коррин', 'Дариус', 'Элара', 'Финн', 'Гвен', 'Халвор', 'Изора', 'Каэлен', 'Лира', 'Мило', 'Надя', 'Орион', 'Перин', 'Рианнон', 'Сорен', 'Талия', 'Валериус'];
+
+        // --- Вспомогательные функции ---
+
+        // Бросок 4d6, отбрасываем наименьший
+        function roll4d6dropLowest() {
+            let rolls = [];
+            for (let i = 0; i < 4; i++) {
+                rolls.push(Math.floor(Math.random() * 6) + 1);
+            }
+            rolls.sort((a, b) => a - b); // Сортируем от меньшего к большему
+            rolls.shift(); // Удаляем первый (наименьший)
+            return rolls.reduce((a, b) => a + b, 0); // Суммируем оставшиеся
+        }
+
+        // Получить случайный элемент из массива
+        function getRandom(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Рассчитать модификатор
+        function getModifier(score) {
+            let mod = Math.floor((score - 10) / 2);
+            return mod >= 0 ? `+${mod}` : `${mod}`;
+        }
+        
+        function getModifierValue(score) {
+            return Math.floor((score - 10) / 2);
+        }
+
+        // --- Основная функция генерации ---
+        
+        function generateCharacter() {
+            // --- Информация ---
+            document.getElementById('char-name').textContent = getRandom(NAMES);
+            document.getElementById('char-class-level').textContent = getRandom(CLASSES) + ' 1';
+            document.getElementById('char-race').textContent = getRandom(RACES);
+            document.getElementById('char-background').textContent = getRandom(BACKGROUNDS);
+            document.getElementById('char-alignment').textContent = getRandom(ALIGNMENTS);
+
+            // --- Характеристики (Stats) ---
+            let stats = {
+                str: roll4d6dropLowest(),
+                dex: roll4d6dropLowest(),
+                con: roll4d6dropLowest(),
+                int: roll4d6dropLowest(),
+                wis: roll4d6dropLowest(),
+                cha: roll4d6dropLowest()
+            };
+            
+            let mods = {
+                str: getModifier(stats.str),
+                dex: getModifier(stats.dex),
+                con: getModifier(stats.con),
+                int: getModifier(stats.int),
+                wis: getModifier(stats.wis),
+                cha: getModifier(stats.cha)
+            };
+            
+            let modValues = {
+                str: getModifierValue(stats.str),
+                dex: getModifierValue(stats.dex),
+                con: getModifierValue(stats.con),
+                int: getModifierValue(stats.int),
+                wis: getModifierValue(stats.wis),
+                cha: getModifierValue(stats.cha)
+            };
+
+            // Заполнение характеристик
+            document.getElementById('stat-str').textContent = stats.str;
+            document.getElementById('stat-dex').textContent = stats.dex;
+            document.getElementById('stat-con').textContent = stats.con;
+            document.getElementById('stat-int').textContent = stats.int;
+            document.getElementById('stat-wis').textContent = stats.wis;
+            document.getElementById('stat-cha').textContent = stats.cha;
+            
+            // Заполнение модификаторов
+            document.getElementById('mod-str').textContent = mods.str;
+            document.getElementById('mod-dex').textContent = mods.dex;
+            document.getElementById('mod-con').textContent = mods.con;
+            document.getElementById('mod-int').textContent = mods.int;
+            document.getElementById('mod-wis').textContent = mods.wis;
+            document.getElementById('mod-cha').textContent = mods.cha;
+
+            // --- Боевые (Combat) ---
+            document.getElementById('combat-ac').textContent = 10 + modValues.dex;
+            document.getElementById('combat-initiative').textContent = mods.dex;
+            document.getElementById('combat-speed').textContent = '30 ft.';
+            document.getElementById('combat-hp').textContent = 10 + modValues.con;
+            document.getElementById('passive-wisdom').textContent = 10 + modValues.wis;
+
+            // --- Навыки (Skills) ---
+            document.getElementById('skill-acrobatics').textContent = mods.dex;
+            document.getElementById('skill-animal_handling').textContent = mods.wis;
+            document.getElementById('skill-arcana').textContent = mods.int;
+            document.getElementById('skill-athletics').textContent = mods.str;
+            document.getElementById('skill-deception').textContent = mods.cha;
+            document.getElementById('skill-history').textContent = mods.int;
+            document.getElementById('skill-insight').textContent = mods.wis;
+            document.getElementById('skill-intimidation').textContent = mods.cha;
+            document.getElementById('skill-investigation').textContent = mods.int;
+            document.getElementById('skill-medicine').textContent = mods.wis;
+            document.getElementById('skill-nature').textContent = mods.int;
+            document.getElementById('skill-perception').textContent = mods.wis;
+            document.getElementById('skill-performance').textContent = mods.cha;
+            document.getElementById('skill-persuasion').textContent = mods.cha;
+            document.getElementById('skill-religion').textContent = mods.int;
+            document.getElementById('skill-sleight_of_hand').textContent = mods.dex;
+            document.getElementById('skill-stealth').textContent = mods.dex;
+            document.getElementById('skill-survival').textContent = mods.wis;
+        }
+
+        // --- НОВАЯ ЧАСТЬ: ЛОГИКА ЗАГРУЗКИ ПОРТРЕТА ---
+        
+        const portraitInput = document.getElementById('portrait-upload');
+        const portraitImage = document.getElementById('portrait-img');
+        
+        portraitInput.addEventListener('change', function(event) {
+            const file = event.target.files[0]; // Получаем первый выбранный файл
+            
+            if (file) {
+                const reader = new FileReader(); // Создаем 'читателя' файлов
+                
+                // Эта функция сработает, когда файл будет прочитан
+                reader.onload = function(e) {
+                    // e.target.result содержит Data URL картинки
+                    portraitImage.src = e.target.result;
+                }
+                
+                // Читаем файл как Data URL
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // --- НОВАЯ ЧАСТЬ: ЛОГИКА ЭКСПОРТА В PNG ---
+        
+        const exportButton = document.getElementById('export-button');
+        const sheetContainer = document.getElementById('sheet-container');
+        
+        exportButton.addEventListener('click', function() {
+            // Получаем имя персонажа для названия файла
+            const filename = document.getElementById('char-name').textContent.trim() || 'dnd-character';
+            
+            // Используем html2canvas
+            html2canvas(sheetContainer, {
+                useCORS: true, // Позволяет 'фотографировать' картинки с других доменов (если есть)
+                allowTaint: true
+            }).then(canvas => {
+                // 'canvas' - это "фотография" нашего <div>
+                
+                // Создаем временную ссылку для скачивания
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png'); // Конвертируем 'canvas' в PNG
+                link.download = `${filename}.png`; // Задаем имя файла
+                
+                // Имитируем клик по ссылке, чтобы началось скачивание
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+
+        // --- Запуск ---
+        document.getElementById('generate-button').addEventListener('click', generateCharacter);
+        
+        // Сгенерировать первого персонажа при загрузке
+        generateCharacter();
+
+    </script>
+</body>
+</html>
